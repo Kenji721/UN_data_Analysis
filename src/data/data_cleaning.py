@@ -234,6 +234,13 @@ class UNCountryDataCleaner:
             df_general_info_flat["UN membership date"], errors="coerce"
         )
         
+        # Fill missing values
+        df_general_info_flat["Capital_city_pop"] = df_general_info_flat["Capital city pop. (000, 2024)"].fillna(df_general_info_flat["Capital city pop. (000)"])
+        df_general_info_flat = df_general_info_flat.drop(columns=["Capital city pop. (000)", "Capital city pop. (000, 2024)"])
+
+        #Filling conversion rate with 1 for countries using USD 
+        df_general_info_flat.loc[df_general_info_flat["Country"] != "State of Palestine", "Exchange rate (per US$)"] = df_general_info_flat.loc[df_general_info_flat["Country"]!= "State of Palestine", "Exchange rate (per US$)"].fillna(1)
+        
         self.df_general_info_flat = df_general_info_flat
         print(f"General Info cleaned. Shape: {df_general_info_flat.shape}")
         print(f"Missing values: {df_general_info_flat.isnull().sum().sum()}")
