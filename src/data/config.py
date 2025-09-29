@@ -33,7 +33,7 @@ OUTPUT_FILES = {
 # =============================================================================
 
 # Similarity threshold for combining typo columns
-SIMILARITY_THRESHOLD = 0.8
+SIMILARITY_THRESHOLD = 0.92
 
 # =============================================================================
 # COLUMN DEFINITIONS

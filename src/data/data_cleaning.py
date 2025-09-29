@@ -115,7 +115,7 @@ class UNCountryDataCleaner:
     @staticmethod
     def smart_combine_typo_columns(df: pd.DataFrame, root_forms: List[str]) -> pd.DataFrame:
         """
-        Merge typo columns into their root forms using similarity matching.
+        Merge typo columns into their root forms using similarity matching with keyword-based filtering.
         
         Args:
             df: DataFrame to clean
@@ -126,23 +126,101 @@ class UNCountryDataCleaner:
         """
         df_fixed = df.copy()
         
+        # Define keywords that must match for specific column types
+        def extract_key_keywords(column_name: str) -> set:
+            """Extract key distinguishing keywords from column name"""
+            keywords = set()
+            column_lower = column_name.lower()
+            
+            # Trade-related keywords
+            if 'export' in column_lower:
+                keywords.add('export')
+            if 'import' in column_lower:
+                keywords.add('import')
+            if 'balance' in column_lower:
+                keywords.add('balance')
+                
+            # Education level keywords
+            if 'primary' in column_lower:
+                keywords.add('primary')
+            if 'upr' in column_lower or 'upper' in column_lower:
+                keywords.add('upper')
+            if 'lowr' in column_lower or 'lower' in column_lower:
+                keywords.add('lower')
+            if 'sec.' in column_lower or 'sec' in column_lower or 'secondary' in column_lower:
+                keywords.add('secondary')
+                
+            # Other distinguishing keywords
+            if 'male' in column_lower and 'female' not in column_lower:
+                keywords.add('male')
+            if 'female' in column_lower and 'male' not in column_lower:
+                keywords.add('female')
+            if 'urban' in column_lower:
+                keywords.add('urban')
+            if 'rural' in column_lower:
+                keywords.add('rural')
+            if 'disbursed' in column_lower:
+                keywords.add('disbursed')
+            if 'received' in column_lower:
+                keywords.add('received')
+                
+            return keywords
+        
+        def keywords_compatible(root_keywords: set, candidate_keywords: set) -> bool:
+            """Check if keywords are compatible for merging"""
+            # If either has no distinguishing keywords, they're compatible
+            if not root_keywords or not candidate_keywords:
+                return True
+            
+            # Check for conflicting keywords
+            conflicting_pairs = [
+                {'export', 'import'},
+                {'export', 'balance'},
+                {'import', 'balance'},
+                {'primary', 'upper'},
+                {'primary', 'lower'},
+                {'upper', 'lower'},
+                {'male', 'female'},
+                {'urban', 'rural'},
+                {'disbursed', 'received'}
+            ]
+            
+            for conflict_pair in conflicting_pairs:
+                if (conflict_pair & root_keywords) and (conflict_pair & candidate_keywords):
+                    # Check if they have conflicting keywords from the same pair
+                    root_conflict = conflict_pair & root_keywords
+                    candidate_conflict = conflict_pair & candidate_keywords
+                    if root_conflict != candidate_conflict:
+                        return False
+            
+            return True
+        
         # For each root form, find and merge similar columns
         for root_col in root_forms:
             if root_col in df_fixed.columns:
                 similar_columns = []
+                root_keywords = extract_key_keywords(root_col)
                 
                 # Check all columns for similarity to this root form
                 for col in df_fixed.columns:
                     if col != root_col and col not in root_forms:  # Don't compare with itself or other root forms
                         similarity = difflib.SequenceMatcher(None, root_col.lower(), col.lower()).ratio()
                         
-                        if similarity > 0.8:  # High similarity threshold
-                            similar_columns.append((col, similarity))
+                        if similarity > 0.92:  # High similarity threshold
+                            candidate_keywords = extract_key_keywords(col)
+                            
+                            # Only add if keywords are compatible
+                            if keywords_compatible(root_keywords, candidate_keywords):
+                                similar_columns.append((col, similarity))
+                            else:
+                                print(f"  Skipping '{col}' -> '{root_col}' due to keyword conflict")
+                                print(f"    Root keywords: {root_keywords}")
+                                print(f"    Candidate keywords: {candidate_keywords}")
                 
                 # Merge similar columns into the root column
                 if similar_columns:
                     print(f"\nMerging into '{root_col}':")
-                    print(f"  Found {len(similar_columns)} similar columns")
+                    print(f"  Found {len(similar_columns)} compatible similar columns")
                     
                     for similar_col, sim_score in similar_columns:
                         print(f"  Merging: '{similar_col}' -> '{root_col}' (similarity: {sim_score:.3f})")
@@ -356,7 +434,7 @@ class UNCountryDataCleaner:
             'Country',
             'Year',
             'Education: Government expenditure (% of GDP)',
-            'Education: Lowr. sec. gross enrol. ratio (f/m per 100 pop.)',
+            'Education: Lowr. sec. gross enrol. ratio  (f/m per 100 pop.)',
             'Education: Primary gross enrol. ratio (f/m per 100 pop.)',
             'Education: Upr. Sec. gross enrol. ratio (f/m per 100 pop.)',
             'Fertility rate, total (live births per woman)',
@@ -414,7 +492,7 @@ class UNCountryDataCleaner:
                 "col2": "Education: Upper Sec. gross enrol. ratio - Male (per 100 pop.)"
             },
             {
-                "column": "Education: Lowr. sec. gross enrol. ratio (f/m per 100 pop.)",
+                "column": "Education: Lowr. sec. gross enrol. ratio  (f/m per 100 pop.)",
                 "col1": "Education: Lower Sec. gross enrol. ratio - Female (per 100 pop.)",
                 "col2": "Education: Lower Sec. gross enrol. ratio - Male (per 100 pop.)"
             },
