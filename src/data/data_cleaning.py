@@ -666,16 +666,115 @@ class UNCountryDataCleaner:
         
         print(f"\n🎉 All datasets exported successfully to {output_dir}/ directory!")
     
-    def process_all_data(self, raw_data_path: str = None, output_dir: str = "data/processed") -> Dict[str, pd.DataFrame]:
+    def merge_datasets(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Complete data processing pipeline: load, clean, and export all datasets.
+        Merge all cleaned datasets according to the specified logic.
+        
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: (df_timeseries, df_merged)
+                - df_timeseries: Economic, social, and environment/infrastructure indicators merged by Country and Year
+                - df_merged: Timeseries data merged with general info by Country only
+        """
+        if (self.df_economic_indicators_flat is None or 
+            self.df_social_indicators_flat is None or 
+            self.df_env_infra_indicators is None or 
+            self.df_general_info_flat is None):
+            raise ValueError("All datasets must be cleaned before merging. Please run the cleaning methods first.")
+        
+        print("Merging datasets...")
+        
+        # Merge timeseries data (economic, social, environment/infrastructure)
+        df_timeseries = self.df_economic_indicators_flat.merge(
+            self.df_social_indicators_flat, 
+            on=['Country', 'Year'], 
+            how='outer'
+        ).merge(
+            self.df_env_infra_indicators, 
+            on=['Country', 'Year'], 
+            how='outer'
+        )
+        
+        print(f"Timeseries data merged. Shape: {df_timeseries.shape}")
+        
+        # Merge timeseries with general info
+        df_merged = pd.merge(df_timeseries, self.df_general_info_flat, on='Country', how='left')
+        
+        print(f"Final merged dataset. Shape: {df_merged.shape}")
+        print(f"Countries in merged data: {len(df_merged['Country'].unique())}")
+        print(f"Years covered: {sorted(df_merged['Year'].unique())}")
+        
+        return df_timeseries, df_merged
+    
+    def export_merged_data(self, df_timeseries: pd.DataFrame, df_merged: pd.DataFrame, 
+                          output_dir: str = "data/processed") -> None:
+        """
+        Export merged datasets to CSV files.
+        
+        Args:
+            df_timeseries: Timeseries merged dataframe
+            df_merged: Complete merged dataframe
+            output_dir: Directory to save the CSV files
+        """
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+        
+        print("Exporting merged datasets...")
+        
+        # Export timeseries data
+        timeseries_filepath = os.path.join(output_dir, 'timeseries_merged.csv')
+        df_timeseries.to_csv(timeseries_filepath, index=False)
+        print(f"✓ Timeseries data: {df_timeseries.shape} -> {timeseries_filepath}")
+        
+        # Export complete merged data
+        merged_filepath = os.path.join(output_dir, 'complete_merged.csv')
+        df_merged.to_csv(merged_filepath, index=False)
+        print(f"✓ Complete merged data: {df_merged.shape} -> {merged_filepath}")
+        
+        print(f"\n🎉 Merged datasets exported successfully to {output_dir}/ directory!")
+    
+    def load_and_merge_cleaned_data(self, data_dir: str = "data/processed") -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Load cleaned datasets from CSV files and create merged datasets.
+        Useful when you already have cleaned data and just want to create merged versions.
+        
+        Args:
+            data_dir: Directory containing the cleaned CSV files
+            
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: (df_timeseries, df_merged)
+        """
+        print("Loading cleaned datasets from CSV files...")
+        
+        # Load cleaned datasets
+        try:
+            self.df_general_info_flat = pd.read_csv(os.path.join(data_dir, 'general_info_clean.csv'))
+            self.df_economic_indicators_flat = pd.read_csv(os.path.join(data_dir, 'economic_indicators_clean.csv'))
+            self.df_social_indicators_flat = pd.read_csv(os.path.join(data_dir, 'social_indicators_clean.csv'))
+            self.df_env_infra_indicators = pd.read_csv(os.path.join(data_dir, 'environment_infrastructure_clean.csv'))
+            
+            print("✓ All cleaned datasets loaded successfully")
+            
+            # Create merged datasets
+            df_timeseries, df_merged = self.merge_datasets()
+            
+            return df_timeseries, df_merged
+            
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Could not find cleaned data files in {data_dir}. "
+                                  f"Please run the cleaning process first or check the file paths. Error: {e}")
+    
+    def process_all_data(self, raw_data_path: str = None, output_dir: str = "data/processed", 
+                        include_merged: bool = True) -> Dict[str, pd.DataFrame]:
+        """
+        Complete data processing pipeline: load, clean, merge, and export all datasets.
         
         Args:
             raw_data_path: Path to the raw UN country data CSV file
             output_dir: Directory to save the cleaned CSV files
+            include_merged: Whether to create and export merged datasets
             
         Returns:
-            Dict[str, pd.DataFrame]: Dictionary containing all cleaned datasets
+            Dict[str, pd.DataFrame]: Dictionary containing all cleaned and merged datasets
         """
         print("Starting complete data processing pipeline...")
         print("=" * 50)
@@ -695,13 +794,25 @@ class UNCountryDataCleaner:
         # Export cleaned data
         self.export_cleaned_data(output_dir)
         
-        # Return all cleaned datasets
+        # Prepare return dictionary with cleaned datasets
         cleaned_datasets = {
             'general_info': df_general_info_clean,
             'economic_indicators': df_economic_indicators_clean,
             'social_indicators': df_social_indicators_clean,
             'environment_infrastructure': df_env_infra_indicators_clean
         }
+        
+        # Create merged datasets if requested
+        if include_merged:
+            print("\n" + "=" * 50)
+            df_timeseries, df_merged = self.merge_datasets()
+            self.export_merged_data(df_timeseries, df_merged, output_dir)
+            
+            # Add merged datasets to return dictionary
+            cleaned_datasets.update({
+                'timeseries_merged': df_timeseries,
+                'complete_merged': df_merged
+            })
         
         print("=" * 50)
         print("Data processing pipeline completed successfully!")
@@ -721,19 +832,28 @@ def main():
     output_dir = "data/processed"
     
     try:
-        cleaned_datasets = cleaner.process_all_data(raw_data_path, output_dir)
+        # Process all data including merging
+        cleaned_datasets = cleaner.process_all_data(raw_data_path, output_dir, include_merged=True)
         
         # Display summary information
         print("\nDataset Summary:")
-        print("-" * 30)
+        print("-" * 50)
         for name, df in cleaned_datasets.items():
             print(f"{name}: {df.shape[0]} rows, {df.shape[1]} columns")
-            
+            if name in ['timeseries_merged', 'complete_merged']:
+                print(f"  └─ Countries: {len(df['Country'].unique())}")
+                if 'Year' in df.columns:
+                    years = sorted(df['Year'].dropna().unique())
+                    if len(years) > 0:
+                        print(f"  └─ Years: {min(years)} - {max(years)}")
+        
+        print("\nMerged datasets created successfully!")
+        print("- timeseries_merged.csv: Economic, social, and environment/infrastructure data")
+        print("- complete_merged.csv: All data including general information")
+        
     except Exception as e:
         print(f"Error processing data: {e}")
         print("Please ensure the raw data file path is correct and the file exists.")
-
-
 if __name__ == "__main__":
     main()
 
