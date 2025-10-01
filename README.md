@@ -1,178 +1,92 @@
-# UN Country Data Processing Project
+# Análisis de Indicadores de Desarrollo de Países (UN Data)
 
-This project contains tools and scripts for cleaning and processing UN country data from raw format into analysis-ready datasets.
+## Descripción del Proyecto
 
-## 🏗️ Project Structure
+Este proyecto analiza una base de datos de la **Organización de las Naciones Unidas (UNdata)** que contiene **indicadores socioeconómicos, demográficos, de salud y educación** de distintos países y años[cite: 613]. [cite\_start]El objetivo es transformar los datos crudos en datasets listos para el análisis, con el fin de responder a preguntas clave sobre el desarrollo y apoyar la toma de decisiones en políticas públicas.
 
-```
-dsf_project/
-├── data/
-│   ├── raw/                     # Raw data files
-│   │   └── un_country_data_raw.csv
-│   └── processed/               # Cleaned data files (generated)
-│       ├── general_info_clean.csv
-│       ├── economic_indicators_clean.csv
-│       ├── social_indicators_clean.csv
-│       └── environment_infrastructure_clean.csv
-├── src/
-│   └── data/
-│       ├── data_cleaning.py     # Main data cleaning module
-│       └── scraper.py
-├── notebooks/
-│   └── raw_data_exploration.ipynb  # Original exploration notebook
-├── config.py                   # Configuration settings
-├── run_data_cleaning.py        # Main execution script
-├── test_cleaner.py            # Test and demo script
-└── requirements.txt           # Python dependencies
-```
+El repositorio incluye un *pipeline* de limpieza que procesa los datos y los divide en categorías para facilitar su uso en análisis exploratorio (EDA), pruebas de hipótesis (t-tests), análisis de componentes principales (PCA) y modelos de aprendizaje automático.
 
-## 🚀 Quick Start
+## Estructura del Proyecto
 
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+El repositorio está organizado en las siguientes carpetas:
 
-### 2. Place Your Data
-Ensure your raw UN country data CSV file is located at:
-```
-data/raw/un_country_data_raw.csv
-```
+  - `data/`: Contiene los datos crudos (`raw/`) y los datasets procesados (`processed/`).
+  - `src/`: Incluye el módulo de limpieza de datos (`UNCountryDataCleaner`) y otros scripts de utilidad.
+  - `notebooks/`: Contiene los Jupyter Notebooks con el análisis exploratorio, las pruebas estadísticas y la construcción de modelos.
+  - `tests/`: Contiene pruebas para asegurar la calidad y consistencia del código.
 
-### 3. Run the Cleaning Pipeline
+Además, se incluyen los siguientes archivos principales:
+
+  - `run_data_cleaning.py`: Script para ejecutar el pipeline de limpieza de datos de principio a fin.
+  - `requirements.txt`: Archivo con las dependencias necesarias para ejecutar el proyecto.
+
+## Instalación
+
+Para configurar el entorno de desarrollo y ejecutar el proyecto, sigue estos pasos:
+
+1.  **Clona el repositorio:**
+    ```bash
+    git clone https://github.com/tu-usuario/tu-repositorio.git
+    cd tu-repositorio
+    ```
+2.  **Crea y activa un entorno virtual (recomendado):**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # En Windows: venv\Scripts\activate
+    ```
+3.  **Instala las dependencias:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## Uso
+
+Para ejecutar el pipeline de limpieza y generar los datasets procesados, utiliza el siguiente comando:
+
 ```bash
 python run_data_cleaning.py
 ```
 
-### 4. Test the Module
-```bash
-python test_cleaner.py
-```
+Los datasets limpios se guardarán en la carpeta `data/processed/` y estarán listos para ser utilizados en los notebooks de análisis.
 
-## 📚 Using the Data Cleaner Module
+## Enfoque Analítico
 
-### Simple Usage
-```python
-from src.data.data_cleaning import UNCountryDataCleaner
+El análisis se centra en responder a **cinco preguntas de negocio** clave a través de:
 
-# Process all data in one go
-cleaner = UNCountryDataCleaner()
-cleaned_datasets = cleaner.process_all_data(
-    raw_data_path="data/raw/un_country_data_raw.csv",
-    output_dir="data/processed"
-)
+  - **Pruebas de hipótesis (t-tests de Welch):** Para comparar las medias entre diferentes grupos de países y determinar si existen diferencias estadísticamente significativas.
+  - **Análisis de Componentes Principales (PCA):** Para reducir la dimensionalidad de los datos, identificar patrones multivariados y facilitar la interpretación de las relaciones entre las variables.
+  - **Modelos de Machine Learning:**
+      - **Clasificación:** Para predecir el nivel de desarrollo de un país (clasificado en cuartiles de PIB per cápita) a partir de indicadores socioeconómicos.
+      - **Regresión:** Para predecir la esperanza de vida promedio al nacer con base en indicadores socioeconómicos, ambientales y de infraestructura.
 
-# Access cleaned datasets
-general_info = cleaned_datasets['general_info']
-economic_data = cleaned_datasets['economic_indicators']
-social_data = cleaned_datasets['social_indicators']
-env_infra_data = cleaned_datasets['environment_infrastructure']
-```
+### Preguntas de Negocio
 
-### Step-by-Step Usage
-```python
-from src.data.data_cleaning import UNCountryDataCleaner
+El proyecto busca responder a las siguientes preguntas:
 
-# Initialize
-cleaner = UNCountryDataCleaner("data/raw/un_country_data_raw.csv")
+1.  ¿Los países con mayor gasto en salud muestran una mayor esperanza de vida? 
+2.  ¿Los países con alta fertilidad difieren en esperanza de vida respecto a los de baja fertilidad? 
+3.  ¿Los países desarrollados presentan tasas de escolarización superiores a los que están en desarrollo? 
+4.  ¿Un mayor gasto en salud se asocia con un mayor desarrollo económico (medido por el PIB per cápita)? 
+5.  ¿Una mayor cantidad de médicos por cada 1,000 habitantes se asocia con una menor mortalidad en menores de 5 años? 
 
-# Load and split data
-df = cleaner.load_data()
-general, economic, social, env_infra = cleaner.split_by_categories()
+## Datasets
 
-# Clean individual datasets
-clean_general = cleaner.clean_general_info(general)
-clean_economic = cleaner.clean_economic_indicators(economic)
-clean_social = cleaner.clean_social_indicators(social)
-clean_env_infra = cleaner.clean_env_infra_indicators(env_infra)
+El proyecto utiliza los siguientes datasets:
 
-# Export results
-cleaner.export_cleaned_data("data/processed")
-```
+  - **Crudo:** `data/raw/un_country_data_raw.csv` 
+  - **Procesados:**
+      - `data/processed/general_info_clean.csv` 
+      - `data/processed/economic_indicators_clean.csv` 
+      - `data/processed/social_indicators_clean.csv` 
+      - `data/processed/environment_infrastructure_clean.csv` 
+      - `data/processed/complete_merged.csv` 
+      - `data/processed/timeseries_merged.csv` 
 
-## 🔧 Key Features
+## Autores
 
-### Data Processing
-- **Automatic column typo handling**: Uses similarity matching to merge columns with typos
-- **Ratio column splitting**: Automatically splits columns like "female/male" into separate columns
-- **Numerical data cleaning**: Removes non-numeric characters and converts to proper data types
-- **Missing data handling**: Identifies and reports missing values
-- **Date parsing**: Converts date columns to proper datetime format
+  - Leonardo Kenji Minemura Suazo
+  - Sara Rocío Miranda Mateos
 
-### Data Categories
-The cleaner processes four main categories of UN country data:
+## Agradecimientos
 
-1. **General Information**
-   - Population data, surface area, capital city information
-   - Exchange rates, population density
-   - UN membership dates
-
-2. **Economic Indicators**
-   - GDP data, trade balances, employment statistics
-   - Agricultural and industrial production indices
-   - Consumer price indices
-
-3. **Social Indicators**
-   - Education enrollment ratios, health expenditure
-   - Life expectancy, fertility rates
-   - Urban population statistics
-
-4. **Environment & Infrastructure**
-   - CO2 emissions, energy production
-   - Internet usage, biodiversity protection
-   - Water and sanitation access
-
-## 📊 Output Data Structure
-
-All cleaned datasets are saved as CSV files with:
-- Consistent column names
-- Proper data types (numeric, datetime, categorical)
-- Split ratio columns for better analysis
-- Merged duplicate/typo columns
-
-## ⚙️ Configuration
-
-The `config.py` file contains all configuration settings including:
-- File paths and directory structures
-- Column definitions for each dataset
-- Processing parameters (similarity thresholds, etc.)
-- Column splitting and merging rules
-
-## 🔍 Data Quality Features
-
-- **Typo Detection**: Automatically identifies and merges similar column names
-- **Data Validation**: Reports missing values and data quality issues
-- **Consistent Formatting**: Standardizes column names and data formats
-- **Error Handling**: Graceful handling of missing or malformed data
-
-## 📋 Requirements
-
-- Python 3.7+
-- pandas >= 1.5.0
-- numpy >= 1.21.0
-- Standard library modules: re, difflib, os, typing
-
-## 🤝 Contributing
-
-To add new cleaning functionality:
-
-1. Add new methods to the `UNCountryDataCleaner` class
-2. Update configuration in `config.py` if needed
-3. Add tests to `test_cleaner.py`
-4. Update this README
-
-## 📝 Notes
-
-- The original notebook (`notebooks/raw_data_exploration.ipynb`) is preserved for reference
-- All cleaning logic has been refactored into the `UNCountryDataCleaner` class
-- The module is designed to be extensible and maintainable
-- Error handling and logging help with debugging and monitoring
-
-## 🎯 Benefits of the Refactored Code
-
-1. **Maintainability**: Object-oriented design makes it easy to modify and extend
-2. **Reusability**: Can be imported and used in other projects
-3. **Testability**: Each method can be tested independently
-4. **Documentation**: Clear docstrings and type hints
-5. **Configuration**: Centralized settings in `config.py`
-6. **Error Handling**: Robust error handling and user feedback
+Los datos utilizados en este proyecto fueron obtenidos de **UNdata**, un servicio de la **Organización de las Naciones Unidas**.
